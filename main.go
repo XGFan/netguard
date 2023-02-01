@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"log"
@@ -31,8 +32,10 @@ type Target struct {
 }
 
 func main() {
-	log.Println("Net Guard")
-	open, err := os.Open("config.yaml")
+	file := flag.String("c", "config.yaml", "config location")
+	flag.Parse()
+	log.Println("Network Guard")
+	open, err := os.Open(*file)
 	if err != nil {
 		log.Fatalf("read config error: %s", err)
 	}
