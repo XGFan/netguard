@@ -15,12 +15,13 @@ import (
 )
 
 type Checker struct {
-	Name      string   `yaml:"name"`
-	Targets   []Target `yaml:"targets"`
-	Proxy     string   `yaml:"proxy"`
-	Threshold int      `yaml:"threshold"`
-	PostUp    string   `yaml:"postUp"`
-	PostDown  string   `yaml:"postDown"`
+	Name      string        `yaml:"name"`
+	Targets   []Target      `yaml:"targets"`
+	Proxy     string        `yaml:"proxy"`
+	Threshold int           `yaml:"threshold"`
+	PostUp    string        `yaml:"postUp"`
+	PostDown  string        `yaml:"postDown"`
+	Timeout   time.Duration `yaml:"timeout"`
 	//----------
 	status    int
 	failCount int
@@ -62,9 +63,9 @@ func (c *Checker) Check(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 		default:
+			ret := c.HttpCheck(ctx)
 			switch c.status {
 			case UP:
-				ret := c.HttpCheck(ctx, 2000*time.Millisecond)
 				if ret.Status {
 					if c.failCount > 1 {
 						log.Printf("%s recover", c.Name)
@@ -87,7 +88,6 @@ func (c *Checker) Check(ctx context.Context) {
 					}
 				}
 			case DOWN:
-				ret := c.HttpCheck(ctx, 1000*time.Millisecond)
 				if ret.Status {
 					c.failCount -= 1
 					if c.failCount <= 0 {
@@ -110,13 +110,13 @@ func (c *Checker) Check(ctx context.Context) {
 
 }
 
-func (c *Checker) HttpCheck(pctx context.Context, timeout time.Duration) CheckResult {
+func (c *Checker) HttpCheck(pctx context.Context) CheckResult {
 	result := make(chan interface{})
-	ctx, cancelFunc := context.WithCancel(pctx)
+	ctx, cancelFunc := context.WithTimeout(pctx, c.Timeout)
 	defer cancelFunc()
 	for _, target := range c.Targets {
 		go func(t Target) {
-			status := HttpCheck(t, c.Proxy, timeout)
+			status := HttpCheck(ctx, t, c.Proxy)
 			select {
 			case <-ctx.Done():
 				return
@@ -130,6 +130,8 @@ func (c *Checker) HttpCheck(pctx context.Context, timeout time.Duration) CheckRe
 		if r, ok := ret.(CheckResult); ok {
 			if r.Status {
 				return r
+			} else {
+				log.Println(r)
 			}
 		}
 	}
@@ -143,16 +145,17 @@ type CheckResult struct {
 
 var StatusOk = CheckResult{true, ""}
 
-func HttpCheck(target Target, proxyStr string, timeout time.Duration) CheckResult {
+func HttpCheck(ctx context.Context, target Target, proxyStr string) CheckResult {
 	var proxy = http.ProxyFromEnvironment
 	if strings.TrimSpace(proxyStr) != "" {
 		proxy = http.ProxyURL(nil)
 	}
 	httpClient := http.Client{
 		Transport: &http.Transport{Proxy: proxy},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, fmt.Sprintf("http://%s", target.IP), nil)
 	if err != nil {
 		return CheckResult{false, fmt.Sprintf("create request fail: %s", err.Error())}
