@@ -49,8 +49,9 @@ func main() {
 	}
 	ctx := context.Background()
 	for _, c := range *checkers {
-		log.Printf("%+v", c)
-		go c.Check(ctx)
+		go func(checker Checker) {
+			checker.Check(ctx)
+		}(c)
 	}
 	select {}
 }
@@ -61,6 +62,7 @@ const (
 )
 
 func (c *Checker) Check(ctx context.Context) {
+	log.Printf("%+v", c)
 	var proxy = http.ProxyFromEnvironment
 	if strings.TrimSpace(c.Proxy) != "" {
 		parse, err := url.Parse(c.Proxy)
