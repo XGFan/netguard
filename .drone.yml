@@ -16,7 +16,7 @@ steps:
   - name: upx
     image: hairyhenderson/upx:3.96
     commands:
-      - upx dns-switchy
+      - upx network-guard
   - name: scp files
     image: appleboy/drone-scp
     settings:

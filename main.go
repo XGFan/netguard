@@ -64,7 +64,7 @@ func (c *Checker) Check(ctx context.Context) {
 		default:
 			switch c.status {
 			case UP:
-				ret := MultiHttpCheck(ctx, c.Targets, 2000*time.Millisecond)
+				ret := c.HttpCheck(ctx, 2000*time.Millisecond)
 				if ret.Status {
 					if c.failCount > 1 {
 						log.Printf("%s recover", c.Name)
@@ -87,7 +87,7 @@ func (c *Checker) Check(ctx context.Context) {
 					}
 				}
 			case DOWN:
-				ret := MultiHttpCheck(ctx, c.Targets, 1000*time.Millisecond)
+				ret := c.HttpCheck(ctx, 1000*time.Millisecond)
 				if ret.Status {
 					c.failCount -= 1
 					if c.failCount <= 0 {
@@ -110,13 +110,13 @@ func (c *Checker) Check(ctx context.Context) {
 
 }
 
-func MultiHttpCheck(pctx context.Context, targets []Target, timeout time.Duration) CheckResult {
+func (c *Checker) HttpCheck(pctx context.Context, timeout time.Duration) CheckResult {
 	result := make(chan interface{})
 	ctx, cancelFunc := context.WithCancel(pctx)
 	defer cancelFunc()
-	for _, target := range targets {
+	for _, target := range c.Targets {
 		go func(t Target) {
-			status := HttpCheck(t, timeout)
+			status := HttpCheck(t, c.Proxy, timeout)
 			select {
 			case <-ctx.Done():
 				return
@@ -125,7 +125,7 @@ func MultiHttpCheck(pctx context.Context, targets []Target, timeout time.Duratio
 			}
 		}(target)
 	}
-	for range targets {
+	for range c.Targets {
 		ret := <-result
 		if r, ok := ret.(CheckResult); ok {
 			if r.Status {
@@ -143,8 +143,14 @@ type CheckResult struct {
 
 var StatusOk = CheckResult{true, ""}
 
-func HttpCheck(target Target, timeout time.Duration) CheckResult {
-	httpClient := http.Client{}
+func HttpCheck(target Target, proxyStr string, timeout time.Duration) CheckResult {
+	var proxy = http.ProxyFromEnvironment
+	if strings.TrimSpace(proxyStr) != "" {
+		proxy = http.ProxyURL(nil)
+	}
+	httpClient := http.Client{
+		Transport: &http.Transport{Proxy: proxy},
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, fmt.Sprintf("http://%s", target.IP), nil)
