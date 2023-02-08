@@ -113,7 +113,7 @@ func (c *Checker) Check(ctx context.Context) {
 						c.status = UP
 						c.failCount = 0
 						if c.PostUp != "" {
-							RunExternalCmd(c.PostDown)
+							RunExternalCmd(c.PostUp)
 							log.Printf("%s PostUp executed", c.Name)
 						}
 					}
