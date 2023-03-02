@@ -75,7 +75,7 @@ func (c *Checker) Check(ctx context.Context) {
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Timeout: 10 * time.Second,
+		Timeout: c.Timeout,
 	}
 	for {
 		select {
@@ -96,7 +96,6 @@ func (c *Checker) Check(ctx context.Context) {
 					if c.failCount >= c.Threshold {
 						log.Printf("%s from UP to DOWN", c.Name)
 						c.status = DOWN
-						c.failCount = c.Threshold
 						if c.PostDown != "" {
 							RunExternalCmd(c.PostDown)
 							log.Printf("%s PostDown executed", c.Name)
@@ -107,18 +106,13 @@ func (c *Checker) Check(ctx context.Context) {
 				}
 			case DOWN:
 				if ret.Status {
-					c.failCount -= 1
-					if c.failCount <= 0 {
-						log.Printf("%s from DOWN to UP", c.Name)
-						c.status = UP
-						c.failCount = 0
-						if c.PostUp != "" {
-							RunExternalCmd(c.PostUp)
-							log.Printf("%s PostUp executed", c.Name)
-						}
+					log.Printf("%s from DOWN to UP", c.Name)
+					c.status = UP
+					c.failCount = 0
+					if c.PostUp != "" {
+						RunExternalCmd(c.PostUp)
+						log.Printf("%s PostUp executed", c.Name)
 					}
-				} else {
-					c.failCount = c.Threshold
 				}
 			}
 			time.Sleep(5 * time.Second)
