@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
+	"github.com/XGFan/go-utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lightsail"
+	"gopkg.in/yaml.v3"
 	"log"
-	"os"
 	"time"
 )
 
@@ -19,13 +19,13 @@ const (
 )
 
 type Config struct {
-	Instance   string     `json:"instance,omitempty"`
-	Region     string     `json:"region,omitempty"`
-	Credential Credential `json:"credential"`
+	Instance   string     `yaml:"instance,omitempty"`
+	Region     string     `yaml:"region,omitempty"`
+	Credential Credential `yaml:"credential"`
 }
 type Credential struct {
-	Id     string `json:"id,omitempty"`
-	Secret string `json:"secret,omitempty"`
+	Id     string `yaml:"id,omitempty"`
+	Secret string `yaml:"secret,omitempty"`
 }
 
 type LightNode struct {
@@ -119,12 +119,12 @@ func (ln LightNode) waitToStable() string {
 }
 
 func main() {
-	file, err := os.ReadFile("config.json")
+	file, err := utils.LocateAndRead("config.yaml")
 	if err != nil {
 		log.Panic(err)
 	}
 	config := Config{}
-	err = json.Unmarshal(file, &config)
+	err = yaml.Unmarshal(file, &config)
 	if err != nil {
 		log.Panic(err)
 	}

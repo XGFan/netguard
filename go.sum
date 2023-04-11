@@ -1,3 +1,11 @@
+github.com/XGFan/go-utils v0.0.0-20230309134030-963c047197e4 h1:93soMCnAVlYN6HyTl0c+pIsRR5gQBkbSRMwdoa0e+ts=
+github.com/XGFan/go-utils v0.0.0-20230309134030-963c047197e4/go.mod h1:hRhnBAxtHS7EDyBc0zLywkLoBp0U4zAFqVVlAmqDofQ=
+github.com/XGFan/go-utils v0.0.0-20230309163134-688315c0840b h1:ZgnWD3lgzlmeBaV5SOOPukfBlOu3V2ZSeRvb4bLdNvg=
+github.com/XGFan/go-utils v0.0.0-20230309163134-688315c0840b/go.mod h1:hRhnBAxtHS7EDyBc0zLywkLoBp0U4zAFqVVlAmqDofQ=
+github.com/XGFan/go-utils v0.0.0-20230411123713-99c2f76af4c0 h1:jD4U3AFB407R+q4DuyrfPo/2RDAm6RlpUUUcGlN79Ng=
+github.com/XGFan/go-utils v0.0.0-20230411123713-99c2f76af4c0/go.mod h1:hRhnBAxtHS7EDyBc0zLywkLoBp0U4zAFqVVlAmqDofQ=
+github.com/XGFan/go-utils v0.0.0-20230411124545-c1851bcee1b8 h1:Inmx/uwV778/bKkPOmAYTiB3mhDrPr5yEGK2LaF7yck=
+github.com/XGFan/go-utils v0.0.0-20230411124545-c1851bcee1b8/go.mod h1:hRhnBAxtHS7EDyBc0zLywkLoBp0U4zAFqVVlAmqDofQ=
 github.com/alessio/shellescape v1.4.1 h1:V7yhSDDn8LP4lc4jS8pFkt0zCnzVJlG5JXy9BVKJUX0=
 github.com/alessio/shellescape v1.4.1/go.mod h1:PZAiSCk0LJaZkiCSkPv8qIobYglO3FPpyFjDCtHLS30=
 github.com/aws/aws-sdk-go v1.44.215 h1:K3KERfO6MaV349idub2w1u1H0R0KSkED0LshPnaAn3Q=

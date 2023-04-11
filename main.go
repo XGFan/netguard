@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	utils "github.com/XGFan/go-utils"
 	"gopkg.in/yaml.v3"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -38,12 +39,12 @@ func main() {
 	file := flag.String("c", "config.yaml", "config location")
 	flag.Parse()
 	log.Println("Network Guard")
-	open, err := os.Open(*file)
+	open, err := utils.LocateAndRead(*file)
 	if err != nil {
 		log.Fatalf("read config error: %s", err)
 	}
 	checkers := new([]Checker)
-	err = yaml.NewDecoder(open).Decode(checkers)
+	err = yaml.Unmarshal(open, checkers)
 	if err != nil {
 		log.Fatalf("parse config error: %s", err)
 	}
@@ -122,35 +123,21 @@ func (c *Checker) Check(ctx context.Context) {
 }
 
 func (c *Checker) HttpCheck(pctx context.Context) CheckResult {
-	result := make(chan interface{})
-	ctx, cancelFunc := context.WithTimeout(pctx, c.Timeout)
-	defer cancelFunc()
-	for _, target := range c.Targets {
-		go func(t Target) {
-			log.Printf("try to check %s", t)
-			status := HttpCheck(c.httpClient, ctx, t)
-			select {
-			case <-ctx.Done():
-				return
-			case result <- status:
-				return
-			}
-		}(target)
-	}
-	timer := time.NewTimer(c.Timeout)
-	for {
-		select {
-		case ret := <-result:
-			if r, ok := ret.(CheckResult); ok {
-				if r.Status {
-					return r
-				}
-			}
-		case <-timer.C:
-			log.Printf("%s all targets timeout", c.Name)
-			return CheckResult{Status: false}
+	ret, err := utils.RaceResultWithError[Target, CheckResult](c.Targets, func(t Target) (CheckResult, error) {
+		log.Printf("try to check %s", t)
+		ret := HttpCheck(c.httpClient, pctx, t)
+		if ret.Status {
+			return ret, nil
+		} else {
+			return CheckResult{}, errors.New(ret.Message)
 		}
+	}, c.Timeout)
+	if err == nil {
+		return ret
+	} else {
+		return CheckResult{Status: false}
 	}
+
 }
 
 type CheckResult struct {
