@@ -5,11 +5,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	utils "github.com/XGFan/go-utils"
+	"github.com/XGFan/go-utils"
 	"gopkg.in/yaml.v3"
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -36,6 +37,9 @@ type Target struct {
 }
 
 func main() {
+	go func() {
+		fmt.Println(http.ListenAndServe(":6060", nil))
+	}()
 	file := flag.String("c", "config.yaml", "config location")
 	flag.Parse()
 	log.Println("Network Guard")
@@ -119,7 +123,6 @@ func (c *Checker) Check(ctx context.Context) {
 			time.Sleep(5 * time.Second)
 		}
 	}
-
 }
 
 func (c *Checker) HttpCheck(pctx context.Context) CheckResult {
