@@ -1,12 +1,10 @@
-package main
+package netguard
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/XGFan/go-utils"
-	"gopkg.in/yaml.v3"
 	"log"
 	"net"
 	"net/http"
@@ -18,13 +16,13 @@ import (
 )
 
 type Checker struct {
-	Name      string        `yaml:"name"`
-	Targets   []Target      `yaml:"targets"`
-	Proxy     string        `yaml:"proxy"`
-	Threshold int           `yaml:"threshold"`
-	PostUp    string        `yaml:"postUp"`
-	PostDown  string        `yaml:"postDown"`
-	Timeout   time.Duration `yaml:"timeout"`
+	Name      string
+	Targets   []Target
+	Proxy     string
+	Threshold int
+	PostUp    func()
+	PostDown  func()
+	Timeout   time.Duration
 	//----------
 	httpClient http.Client
 	status     int
@@ -36,35 +34,14 @@ type Target struct {
 	Host string `yaml:"host"`
 }
 
-func main() {
-	go func() {
-		fmt.Println(http.ListenAndServe(":6060", nil))
-	}()
-	file := flag.String("c", "config.yaml", "config location")
-	flag.Parse()
-	log.Println("Network Guard")
-	open, err := utils.LocateAndRead(*file)
-	if err != nil {
-		log.Fatalf("read config error: %s", err)
-	}
-	checkers := new([]Checker)
-	err = yaml.Unmarshal(open, checkers)
-	if err != nil {
-		log.Fatalf("parse config error: %s", err)
-	}
-	ctx := context.Background()
-	for _, c := range *checkers {
-		go func(checker Checker) {
-			checker.Check(ctx)
-		}(c)
-	}
-	select {}
-}
-
 const (
-	UP = iota
-	DOWN
+	DOWN = iota
+	UP
 )
+
+func (c *Checker) Status() int {
+	return c.status
+}
 
 func (c *Checker) Check(ctx context.Context) {
 	log.Printf("%+v", c)
@@ -101,9 +78,8 @@ func (c *Checker) Check(ctx context.Context) {
 					if c.failCount >= c.Threshold {
 						log.Printf("%s from UP to DOWN", c.Name)
 						c.status = DOWN
-						if c.PostDown != "" {
-							RunExternalCmd(c.PostDown)
-							log.Printf("%s PostDown executed", c.Name)
+						if c.PostDown != nil {
+							c.PostDown()
 						}
 					} else {
 						log.Printf("%s jitter", c.Name)
@@ -114,9 +90,8 @@ func (c *Checker) Check(ctx context.Context) {
 					log.Printf("%s from DOWN to UP", c.Name)
 					c.status = UP
 					c.failCount = 0
-					if c.PostUp != "" {
-						RunExternalCmd(c.PostUp)
-						log.Printf("%s PostUp executed", c.Name)
+					if c.PostUp != nil {
+						c.PostUp()
 					}
 				}
 			}
@@ -172,6 +147,34 @@ func TcpPing(addr string) error {
 	dialer, err := net.DialTCP("tcp", nil, tcpAddr)
 	_, err = dialer.Write([]byte{})
 	return err
+}
+
+type CheckerConf struct {
+	Name      string        `yaml:"name"`
+	Targets   []Target      `yaml:"targets"`
+	Proxy     string        `yaml:"proxy"`
+	Threshold int           `yaml:"threshold"`
+	PostUp    string        `yaml:"postUp"`
+	PostDown  string        `yaml:"postDown"`
+	Timeout   time.Duration `yaml:"timeout"`
+}
+
+func AssembleChecker(conf CheckerConf) Checker {
+	return Checker{
+		Name:      conf.Name,
+		Targets:   conf.Targets,
+		Proxy:     conf.Proxy,
+		Threshold: conf.Threshold,
+		PostUp: func() {
+			RunExternalCmd(conf.PostUp)
+			log.Printf("%s PostUp executed", conf.Name)
+		},
+		PostDown: func() {
+			RunExternalCmd(conf.PostDown)
+			log.Printf("%s PostDown executed", conf.Name)
+		},
+		Timeout: conf.Timeout,
+	}
 }
 
 func RunExternalCmd(cmd string) {
