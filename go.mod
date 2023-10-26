@@ -1,4 +1,4 @@
-module netguard
+module github.com/XGFan/netguard
 
 go 1.21
 
